@@ -1,117 +1,258 @@
 const express = require("express");
-const dontenv = require("dotenv");
+const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-dontenv.config();
 
-const uri = process.env.MONGODB_URI;
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
 
-app.use(cors());
+const PORT = process.env.PORT || 5000;
+const uri = process.env.MONGODB_URI;
+
+// Middleware
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://globetrotting-urge-client.vercel.app/",
+    ],
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
+// MongoDB Client
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
-  tlsAllowInvalidCertificates: true,
 });
 
 async function run() {
   try {
     await client.connect();
 
+    console.log("MongoDB Connected Successfully!");
+
     const db = client.db("globetrotting-urge");
+
     const destinationCollection = db.collection("destinations");
     const bookingCollection = db.collection("bookings");
 
+    // =========================
+    // Root Route
+    // =========================
+    app.get("/", (req, res) => {
+      res.send("Server is running fine!");
+    });
+
+    // =========================
+    // Get All Destinations
+    // =========================
     app.get("/destination", async (req, res) => {
-      const result = await destinationCollection.find().toArray();
-      res.json(result);
+      try {
+        const result = await destinationCollection.find().toArray();
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Add Destination
+    // =========================
     app.post("/destination", async (req, res) => {
-      const destinationData = req.body;
-      console.log(destinationData);
-      const result = await destinationCollection.insertOne(destinationData);
+      try {
+        const destinationData = req.body;
 
-      res.json(result);
+        const result =
+          await destinationCollection.insertOne(destinationData);
+
+        res.status(201).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Get Single Destination
+    // =========================
     app.get("/destination/:id", async (req, res) => {
-      const { id } = req.params;
+      try {
+        const { id } = req.params;
 
-      const result = await destinationCollection.findOne({
-        _id: new ObjectId(id),
-      });
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid Destination ID",
+          });
+        }
 
-      res.json(result);
+        const result = await destinationCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!result) {
+          return res.status(404).json({
+            success: false,
+            message: "Destination not found",
+          });
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Update Destination
+    // =========================
     app.patch("/destination/:id", async (req, res) => {
-      const { id } = req.params;
-      const updatedData = req.body;
-      console.log(updatedData);
+      try {
+        const { id } = req.params;
+        const updatedData = req.body;
 
-      const result = await destinationCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updatedData },
-      );
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid Destination ID",
+          });
+        }
 
-      res.json(result);
+        const result = await destinationCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: updatedData,
+          },
+        );
+
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
-    
+    // =========================
+    // Delete Destination
+    // =========================
     app.delete("/destination/:id", async (req, res) => {
-      const { id } = req.params;
-      const result = await destinationCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.json(result);
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid Destination ID",
+          });
+        }
+
+        const result = await destinationCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Get User Bookings
+    // =========================
     app.get("/booking/:userId", async (req, res) => {
-      const { userId } = req.params;
+      try {
+        const { userId } = req.params;
 
-      const result = await bookingCollection.find({ userId: userId }).toArray();
+        const result = await bookingCollection
+          .find({ userId: userId })
+          .toArray();
 
-      res.json(result)
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Add Booking
+    // =========================
     app.post("/booking", async (req, res) => {
-      const bookingData = req.body;
-      const result = await bookingCollection.insertOne(bookingData);
+      try {
+        const bookingData = req.body;
 
-      res.json(result);
+        const result = await bookingCollection.insertOne(bookingData);
+
+        res.status(201).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
     });
 
+    // =========================
+    // Delete Booking
+    // =========================
+    app.delete("/booking/:bookingId", async (req, res) => {
+      try {
+        const { bookingId } = req.params;
 
-    app.delete('/booking/:bookingId', async (req, res) => {
-      const {bookingId} = req.params;
-      const result = await bookingCollection.deleteOne({_id: new ObjectId(bookingId)})
+        if (!ObjectId.isValid(bookingId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid Booking ID",
+          });
+        }
 
-      res.json(result)
-    })
+        const result = await bookingCollection.deleteOne({
+          _id: new ObjectId(bookingId),
+        });
 
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
+    // MongoDB Ping
     await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+
+    console.log("MongoDB Ping Successful!");
+  } catch (error) {
+    console.error("Server Error:", error);
   }
 }
-run().catch(console.dir);
 
-app.get("/", (req, res) => {
-  res.send("Server is running fine!");
-});
+run();
 
+// Start Server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(` Server running on port ${PORT}`);
 });
