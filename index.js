@@ -9,14 +9,14 @@ const app = express();
 
 const PORT = process.env.PORT || 5000;
 const uri = process.env.MONGODB_URI;
+const allowedOrigins = [
+  process.env.BETTER_AUTH_URL,
+].filter(Boolean);
 
 // Middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://globetrotting-urge-client.vercel.app/",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
@@ -34,26 +34,22 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    await client.connect(); //  comments korbo deploy
 
     console.log("MongoDB Connected Successfully!");
-
+    //Database Name: globetrotting-urge
     const db = client.db("globetrotting-urge");
 
     const destinationCollection = db.collection("destinations");
     const bookingCollection = db.collection("bookings");
 
-    // =========================
     // Root Route
-    // =========================
     app.get("/", (req, res) => {
       res.send("Server is running fine!");
     });
 
-    // =========================
     // Get All Destinations
-    // =========================
-    app.get("/destination", async (req, res) => {
+    app.get(["/destination", "/destinations"], async (req, res) => {
       try {
         const result = await destinationCollection.find().toArray();
         res.status(200).json(result);
@@ -65,10 +61,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Add Destination
-    // =========================
-    app.post("/destination", async (req, res) => {
+    app.post(["/destination", "/destinations"], async (req, res) => {
       try {
         const destinationData = req.body;
 
@@ -84,10 +78,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Get Single Destination
-    // =========================
-    app.get("/destination/:id", async (req, res) => {
+    app.get(["/destination/:id", "/destinations/:id"], async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -118,10 +110,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Update Destination
-    // =========================
-    app.patch("/destination/:id", async (req, res) => {
+    app.patch(["/destination/:id", "/destinations/:id"], async (req, res) => {
       try {
         const { id } = req.params;
         const updatedData = req.body;
@@ -149,10 +139,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Delete Destination
-    // =========================
-    app.delete("/destination/:id", async (req, res) => {
+    app.delete(["/destination/:id", "/destinations/:id"], async (req, res) => {
       try {
         const { id } = req.params;
 
@@ -176,10 +164,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Get User Bookings
-    // =========================
-    app.get("/booking/:userId", async (req, res) => {
+    app.get(["/booking/:userId", "/bookings/:userId"], async (req, res) => {
       try {
         const { userId } = req.params;
 
@@ -196,10 +182,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Add Booking
-    // =========================
-    app.post("/booking", async (req, res) => {
+    app.post(["/booking", "/bookings"], async (req, res) => {
       try {
         const bookingData = req.body;
 
@@ -214,10 +198,8 @@ async function run() {
       }
     });
 
-    // =========================
     // Delete Booking
-    // =========================
-    app.delete("/booking/:bookingId", async (req, res) => {
+    app.delete(["/booking/:bookingId", "/bookings/:bookingId"], async (req, res) => {
       try {
         const { bookingId } = req.params;
 
@@ -241,8 +223,22 @@ async function run() {
       }
     });
 
+    // Get All Bookings 
+
+    app.get("/bookings", async (req, res) => {
+      try {
+        const result = await bookingCollection.find().toArray();
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    });
+
     // MongoDB Ping
-    await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 }); // comments korbo deploy
 
     console.log("MongoDB Ping Successful!");
   } catch (error) {
